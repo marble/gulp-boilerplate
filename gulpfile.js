@@ -1,295 +1,360 @@
-/**
- * Settings
- * Turn on/off build features
- */
+const fs = require('fs');
+const mkdirp = require('mkdirp');
+const path = require('path');
+const unzipper = require('unzipper');
 
-var settings = {
-	clean: true,
-	scripts: true,
-	polyfills: true,
-	styles: true,
-	svgs: true,
-	copy: true,
-	reload: true
+// use 1 to activate task, use 0 to deactivate
+let settings = {
+  clean         : 1,
+  cleanGenerated: 1,
+  cleanUnzipped : 1,
+  scripts       : 1,
+  polyfills     : 1,
+  styles        : 1,
+  svgs          : 1,
+  copy          : 1,
+  reload        : 1
 };
 
-
-/**
- * Paths to project folders
- */
-
-var paths = {
-	input: 'src/',
-	output: 'dist/',
-	scripts: {
-		input: 'src/js/*',
-		polyfills: '.polyfill.js',
-		output: 'dist/js/'
-	},
-	styles: {
-		input: 'src/sass/**/*.{scss,sass}',
-		output: 'dist/css/'
-	},
-	svgs: {
-		input: 'src/svg/*.svg',
-		output: 'dist/svg/'
-	},
-	copy: {
-		input: 'src/copy/**/*',
-		output: 'dist/'
-	},
-	reload: './dist/'
+const paths = {
+  input: 'src/',
+  output: 'dist/',
+  output_generated: 'GENERATED/',
+  output_unzipped: 'GENERATED/UNZIPPED',
+  scripts: {
+    input: 'src/js/**/*.{js}',
+    polyfills: '.polyfill.js',
+    output: 'dist/js/'
+  },
+  styles: {
+    input: 'src/sass/**/*.{scss,sass}',
+    output: 'dist/css/'
+  },
+  svgs: {
+    input: 'src/svg/*.svg',
+    output: 'dist/svg/'
+  },
+  copy: {
+    input: 'src/copy/**/*',
+    output: 'dist/'
+  },
+  reload: './dist/',
+  npm_distributions: {
+    'bootstrap'                : path.normalize(path.join(require.resolve('bootstrap'       ), '../../../dist')),
+    'jquery'                   : path.normalize(path.join(require.resolve('jquery'          ), '../../dist')),
+    'smartmenus'               : path.normalize(path.join(require.resolve('smartmenus'      ), '..')),
+    'js-cookie'                : path.normalize(path.join(require.resolve('js-cookie'       ), '..')),
+    'responsive-tabs-js'       : path.normalize(path.join(require.resolve('responsive-tabs' ), '../../js')),
+    'slick-carousel'           : path.normalize(path.join(require.resolve('slick-carousel'  ), '../slick')),
+    'fontawesome-free'         : path.normalize(path.join(require.resolve('@fortawesome/fontawesome-free' ), '../..')),
+    'fontawesome-free-webfonts': path.normalize(path.join(require.resolve('@fortawesome/fontawesome-free' ), '../../webfonts')),
+  }
 };
 
-
-/**
- * Template for banner to add to file headers
- */
-
-var banner = {
-	main:
-		'/*!' +
-		' <%= package.name %> v<%= package.version %>' +
-		' | (c) ' + new Date().getFullYear() + ' <%= package.author.name %>' +
-		' | <%= package.license %> License' +
-		' | <%= package.repository.url %>' +
-		' */\n'
+// Template for file header banner
+let banner = {
+  main:
+    '/*!' +
+    ' <%= package.name %> v<%= package.version %>' +
+    ' | (c) ' + new Date().getFullYear() + ' <%= package.author.name %>' +
+    ' | <%= package.license %> License' +
+    ' | <%= package.repository.url %>' +
+    ' */\n'
 };
 
+// general
+const gulp = require('gulp');
+const {src, dest, watch, series, parallel} = require('gulp');
+const del      = require('del');
+const flatmap  = require('gulp-flatmap');
+const lazypipe = require('lazypipe');
+const rename   = require('gulp-rename');
+const header   = require('gulp-header');
+const packagejson = require('./package.json');
 
-/**
- * Gulp Packages
+// scripts
+const concat     = require('gulp-concat');
+const jshint     = require('gulp-jshint');
+const optimizejs = require('gulp-optimize-js');
+const stylish    = require('jshint-stylish');
+const uglify     = require('gulp-terser');
+
+// css
+const minify  = require('cssnano');
+const postcss = require('gulp-postcss');
+const prefix  = require('autoprefixer');
+const sass    = require('gulp-sass');
+
+// other
+const svgmin      = require('gulp-svgmin');
+const browserSync = require('browser-sync');
+
+/*
+ * Split the string at the first occurrence of sep, and return a 3-items array containing the part before the
+ * separator, the separator itself, and the part after the separator. If the separator is not found, return
+ * a 3-item array containing the string itself, followed by two empty strings.
  */
+function partition(s, sep) {
+  'use strict';
+  let p = s.indexOf(sep);
+  if (p === -1) {
+    return [s, '', ''];
+  } else {
+    return [s.substr(0, p), sep, s.substr(p + sep.length)];
+  }
+}
 
-// General
-var {gulp, src, dest, watch, series, parallel} = require('gulp');
-var del = require('del');
-var flatmap = require('gulp-flatmap');
-var lazypipe = require('lazypipe');
-var rename = require('gulp-rename');
-var header = require('gulp-header');
-var package = require('./package.json');
+function defaultTask(done) {
+  'use strict';
+  console.log('run `gulp -T` or `gulp --tasks-simple` for task list');
+  done();
+}
 
-// Scripts
-var jshint = require('gulp-jshint');
-var stylish = require('jshint-stylish');
-var concat = require('gulp-concat');
-var uglify = require('gulp-terser');
-var optimizejs = require('gulp-optimize-js');
+// can be used in function calls that require an error callback
+function exitOnErrorCb(err) {
+  'use strict';
+  console.log('Exiting in function: exitOnErrorCb');
+  console.log(err);
+  process.exit(1);
+}
 
-// Styles
-var sass = require('gulp-sass');
-var postcss = require('gulp-postcss');
-var prefix = require('autoprefixer');
-var minify = require('cssnano');
+function cleanDist(done) {
+  'use strict';
+  if (settings.clean) {
+    del.sync([
+      paths.output
+    ]);
+  }
+  done();
+}
 
-// SVGs
-var svgmin = require('gulp-svgmin');
+function cleanGenerated(done) {
+  'use strict';
+  if (settings.cleanGenerated) {
+    del.sync([
+      paths.output_generated
+    ]);
+  }
+  done();
+}
 
-// BrowserSync
-var browserSync = require('browser-sync');
+function cleanUnzipped(done) {
+  'use strict';
+  if (settings.cleanUnzipped) {
+    del.sync([
+      paths.output_unzipped
+    ]);
+  }
+  done();
+}
+
+let jsTasks = lazypipe()
+  .pipe(header, banner.main, {package: packagejson})
+  .pipe(optimizejs)
+  .pipe(dest, paths.scripts.output)
+  .pipe(rename, {suffix: '.min'})
+  .pipe(uglify)
+  .pipe(optimizejs)
+  .pipe(header, banner.main, {package: packagejson})
+  .pipe(dest, paths.scripts.output);
+
+let jsTasksFull = lazypipe()
+  .pipe(header, banner.main, {package: packagejson})
+  .pipe(optimizejs)
+  .pipe(dest, paths.scripts.output)
+  .pipe(rename, {suffix: '.min'})
+  .pipe(uglify)
+  .pipe(optimizejs)
+  .pipe(header, banner.main, {package: packagejson})
+  .pipe(dest, paths.scripts.output);
 
 
-/**
- * Gulp Tasks
- */
-
-// Remove pre-existing content from output folders
-var cleanDist = function (done) {
-
-	// Make sure this feature is activated before running
-	if (!settings.clean) return done();
-
-	// Clean the dist folder
-	del.sync([
-		paths.output
-	]);
-
-	// Signal completion
-	return done();
-
-};
-
-// Repeated JavaScript tasks
-var jsTasks = lazypipe()
-	.pipe(header, banner.main, {package: package})
-	.pipe(optimizejs)
-	.pipe(dest, paths.scripts.output)
-	.pipe(rename, {suffix: '.min'})
-	.pipe(uglify)
-	.pipe(optimizejs)
-	.pipe(header, banner.main, {package: package})
-	.pipe(dest, paths.scripts.output);
-
-// Lint, minify, and concatenate scripts
+// lint, minify, concatenate
 var buildScripts = function (done) {
-
-	// Make sure this feature is activated before running
-	if (!settings.scripts) return done();
-
-	// Run tasks on script files
-	return src(paths.scripts.input)
-		.pipe(flatmap(function(stream, file) {
-
-			// If the file is a directory
-			if (file.isDirectory()) {
-
-				// Setup a suffix variable
-				var suffix = '';
-
-				// If separate polyfill files enabled
-				if (settings.polyfills) {
-
-					// Update the suffix
-					suffix = '.polyfills';
-
-					// Grab files that aren't polyfills, concatenate them, and process them
-					src([file.path + '/*.js', '!' + file.path + '/*' + paths.scripts.polyfills])
-						.pipe(concat(file.relative + '.js'))
-						.pipe(jsTasks());
-
-				}
-
-				// Grab all files and concatenate them
-				// If separate polyfills enabled, this will have .polyfills in the filename
-				src(file.path + '/*.js')
-					.pipe(concat(file.relative + suffix + '.js'))
-					.pipe(jsTasks());
-
-				return stream;
-
-			}
-
-			// Otherwise, process the file
-			return stream.pipe(jsTasks());
-
-		}));
-
+  'use strict';
+  if (!settings.scripts) {
+    return done();
+  }
+  return src(paths.scripts.input)
+    .pipe(flatmap(function(stream, file) {
+      if (file.isDirectory()) {
+        let suffix = '';
+        if (settings.polyfills) {
+          suffix = '.polyfills';
+          // Grab files that aren't polyfills, concatenate them, and process them
+          src([file.path + '/*.js', '!' + file.path + '/*' + paths.scripts.polyfills])
+            .pipe(concat(file.relative + '.js'))
+            .pipe(jsTasks());
+        }
+        // concatenate all
+        // If separate polyfills enabled, this will have .polyfills in the filename
+        src(file.path + '/*.js')
+          .pipe(concat(file.relative + suffix + '.js'))
+          .pipe(jsTasks());
+        return stream;
+      } else {
+        // process file
+        return stream.pipe(jsTasks());
+      }
+    }));
 };
 
-// Lint scripts
-var lintScripts = function (done) {
+function lintScripts(done) {
+  'use strict';
+  if (!settings.scripts) {
+    return done();
+  }
+  return src(paths.scripts.input)
+    .pipe(jshint())
+    .pipe(jshint.reporter('jshint-stylish'));
+}
 
-	// Make sure this feature is activated before running
-	if (!settings.scripts) return done();
+// process, lint, and minify Sass files
+function buildStyles(done) {
+  'use strict';
+  if (!settings.styles) {
+    return done();
+  }
+  return src(paths.styles.input)
+    .pipe(sass({
+      outputStyle: 'expanded',
+      sourceComments: true
+    }))
+    .pipe(postcss([
+      prefix({
+        cascade: true,
+        remove: true
+      })
+    ]))
+    .pipe(header(banner.main, {package: packagejson}))
+    .pipe(dest(paths.styles.output))
+    .pipe(rename({suffix: '.min'}))
+    .pipe(postcss([
+      minify({
+        discardComments: {
+          removeAll: true
+        }
+      })
+    ]))
+    .pipe(dest(paths.styles.output));
 
-	// Lint scripts
-	return src(paths.scripts.input)
-		.pipe(jshint())
-		.pipe(jshint.reporter('jshint-stylish'));
+}
 
-};
+// optimize SVG
+function buildSVGs(done) {
+  'use strict';
+  if (!settings.svgs) {
+    return done();
+  }
+  return src(paths.svgs.input)
+    .pipe(svgmin())
+    .pipe(dest(paths.svgs.output));
 
-// Process, lint, and minify Sass files
-var buildStyles = function (done) {
+}
 
-	// Make sure this feature is activated before running
-	if (!settings.styles) return done();
+// copy static files
+function copyFiles(done) {
+  'use strict';
+  if (!settings.copy) {
+    return done();
+  }
+  return src(paths.copy.input)
+    .pipe(dest(paths.copy.output));
+}
 
-	// Run tasks on all Sass files
-	return src(paths.styles.input)
-		.pipe(sass({
-			outputStyle: 'expanded',
-			sourceComments: true
-		}))
-		.pipe(postcss([
-			prefix({
-				cascade: true,
-				remove: true
-			})
-		]))
-		.pipe(header(banner.main, {package: package}))
-		.pipe(dest(paths.styles.output))
-		.pipe(rename({suffix: '.min'}))
-		.pipe(postcss([
-			minify({
-				discardComments: {
-					removeAll: true
-				}
-			})
-		]))
-		.pipe(dest(paths.styles.output));
+function startServer(done) {
+  'use strict';
+  if (!settings.reload) {
+    return done();
+  }
+  // https://browsersync.io/docs/options
+  browserSync.init({
+    server: {
+      baseDir: paths.reload
+    }
+  });
+  done();
+}
 
-};
+function reloadBrowser(done) {
+  'use strict';
+  if (settings.reload) {
+    browserSync.reload();
+  }
+  done();
+}
 
-// Optimize SVG files
-var buildSVGs = function (done) {
+function watchSource(done) {
+  'use strict';
+  watch(paths.input, series(exports.all, reloadBrowser));
+  done();
+}
 
-	// Make sure this feature is activated before running
-	if (!settings.svgs) return done();
-
-	// Optimize SVG files
-	return src(paths.svgs.input)
-		.pipe(svgmin())
-		.pipe(dest(paths.svgs.output));
-
-};
-
-// Copy static files into output folder
-var copyFiles = function (done) {
-
-	// Make sure this feature is activated before running
-	if (!settings.copy) return done();
-
-	// Copy static files
-	return src(paths.copy.input)
-		.pipe(dest(paths.copy.output));
-
-};
-
-// Watch for changes to the src directory
-var startServer = function (done) {
-
-	// Make sure this feature is activated before running
-	if (!settings.reload) return done();
-
-	// Initialize BrowserSync
-	browserSync.init({
-		server: {
-			baseDir: paths.reload
-		}
-	});
-
-	// Signal completion
-	done();
-
-};
-
-// Reload the browser when files change
-var reloadBrowser = function (done) {
-	if (!settings.reload) return done();
-	browserSync.reload();
-	done();
-};
-
-// Watch for changes
-var watchSource = function (done) {
-	watch(paths.input, series(exports.default, reloadBrowser));
-	done();
-};
+const all = series(
+  cleanDist,
+  parallel(
+    buildScripts,
+    lintScripts,
+    buildStyles,
+    buildSVGs,
+    copyFiles
+  ));
 
 
-/**
- * Export Tasks
- */
+function makeUnzipTask(from_spec, to_spec) {
+  'use strict';
+  return function (done) {
+    fs.createReadStream(from_spec)
+      .pipe(unzipper.Extract({path: to_spec}))
+      .on('close', done);
+  };
+}
 
-// Default task
-// gulp
-exports.default = series(
-	cleanDist,
-	parallel(
-		buildScripts,
-		lintScripts,
-		buildStyles,
-		buildSVGs,
-		copyFiles
-	)
-);
 
-// Watch and reload
-// gulp watch
-exports.watch = series(
-	exports.default,
-	startServer,
-	watchSource
-);
+function getUnzipTasks() {
+  'use strict';
+  let arr = [];
+  mkdirp.sync(paths.output_unzipped);
+  for (let [k, v] of Object.entries(paths.npm_distributions)) {
+    let parts = partition(v, '.zip');
+    if (parts[1] === '.zip') {
+      arr.push(makeUnzipTask(parts[0] + parts[1], paths.output_unzipped));
+    }
+  }
+  return arr;
+}
+
+function makeCopyTask(from_spec, to_spec) {
+  'use strict';
+  return function () {
+    return src(from_spec).pipe(dest(to_spec));
+  };
+}
+
+function getCopyTasks() {
+  'use strict';
+  let arr = [];
+  mkdirp.sync(paths.output_generated);
+  for (let [k, v] of Object.entries(paths.npm_distributions)) {
+    let parts = partition(v, '.zip');
+    if (parts[1] === '.zip') {
+      v = path.join(paths.output_unzipped, parts[2]);
+    }
+    arr.push(makeCopyTask(path.join(v, '**'), path.join(paths.output_generated, k)));
+  }
+  return arr;
+}
+
+
+exports.all     = all;
+exports.cleanDist   = cleanDist;
+exports.default = defaultTask;
+exports.watch = series(all, startServer, watchSource);
+
+// gp - get packages for development
+exports.gp_0_Refresh = series.apply(null, [cleanGenerated].concat(getUnzipTasks(), getCopyTasks()));
+exports.gp_1_Clean   = cleanGenerated;
+exports.gp_2_Unzip   = series.apply(null, getUnzipTasks());
+exports.gp_3_Copy    = series.apply(null, getCopyTasks());
+exports.gp_4_CleanUnzipped = cleanUnzipped;
+
