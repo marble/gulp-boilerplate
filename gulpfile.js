@@ -1,8 +1,4 @@
-const fs = require('fs');
-const mkdirp = require('mkdirp');
 const path = require('path');
-const unzipper = require('unzipper');
-const browserSync = require('requireg')('browser-sync');
 
 // use 1 to activate task, use 0 to deactivate
 let settings = {
@@ -55,6 +51,22 @@ const paths = {
 // Template for file header banner
 let banner = {
   main:
+    '/*!\n' +
+    ' * <%= package.name %> v<%= package.version %>\n' +
+    ' * <%= package.description %>\n' +
+    ' * (c) ' + new Date().getFullYear() + ' <%= package.author.name %>\n' +
+    ' * <%= package.license %> License\n' +
+    ' * <%= package.repository.url %>\n' +
+    ' */\n\n',
+  full:
+    '/*!\n' +
+    ' * <%= package.name %> v<%= package.version %>\n' +
+    ' * <%= package.description %>\n' +
+    ' * (c) ' + new Date().getFullYear() + ' <%= package.author.name %>\n' +
+    ' * <%= package.license %> License\n' +
+    ' * <%= package.repository.url %>\n' +
+    ' */\n\n',
+  min:
     '/*!' +
     ' <%= package.name %> v<%= package.version %>' +
     ' | (c) ' + new Date().getFullYear() + ' <%= package.author.name %>' +
@@ -63,28 +75,34 @@ let banner = {
     ' */\n'
 };
 
+
 // general
-const gulp = require('gulp');
-const {src, dest, watch, series, parallel} = require('gulp');
-const del      = require('del');
-const flatmap  = require('gulp-flatmap');
-const lazypipe = require('lazypipe');
-const rename   = require('gulp-rename');
-const header   = require('gulp-header');
+const browserSync = require('requireg')('browser-sync');
+const del         = require('del');
+const flatmap     = require('gulp-flatmap');
+const fs          = require('fs');
+const gulp        = require('gulp');
+const sourcemaps  = require('gulp-sourcemaps');
+const header      = require('gulp-header');
+const lazypipe    = require('lazypipe');
+const mkdirp      = require('mkdirp');
 const packagejson = require('./package.json');
+const rename      = require('gulp-rename');
+const unzipper    = require('unzipper');
+const {src, dest, watch, series, parallel} = require('gulp');
 
 // scripts
-const concat     = require('gulp-concat');
-const jshint     = require('gulp-jshint');
-const optimizejs = require('gulp-optimize-js');
-const stylish    = require('jshint-stylish');
-const uglify     = require('gulp-terser');
+const concat      = require('gulp-concat');
+const jshint      = require('gulp-jshint');
+const optimizejs  = require('gulp-optimize-js');
+const stylish     = require('jshint-stylish');
+const uglify      = require('gulp-terser');
 
 // css
-const minify  = require('cssnano');
-const postcss = require('gulp-postcss');
-const prefix  = require('autoprefixer');
-const sass    = require('gulp-sass');
+const minify      = require('cssnano');
+const postcss     = require('gulp-postcss');
+const prefix      = require('autoprefixer');
+const sass        = require('gulp-sass');
 
 // other
 const svgmin      = require('gulp-svgmin');
@@ -216,9 +234,11 @@ function buildStyles(done) {
     return done();
   }
   return src(paths.styles.input)
+    .pipe(sourcemaps.init())
     .pipe(sass({
       outputStyle: 'expanded',
-      sourceComments: true
+      sourceComments: true,
+      errLogToConsole: true
     }))
     .pipe(postcss([
       prefix({
@@ -236,6 +256,7 @@ function buildStyles(done) {
         }
       })
     ]))
+    .pipe(sourcemaps.write('./'))
     .pipe(dest(paths.styles.output));
 
 }
@@ -284,21 +305,6 @@ function reloadBrowser(done) {
   done();
 }
 
-function watchSource(done) {
-  'use strict';
-  watch(paths.input, series(exports.all, reloadBrowser));
-  done();
-}
-
-const all = series(
-  cleanDist,
-  parallel(
-    buildScripts,
-    lintScripts,
-    buildStyles,
-    buildSVGs,
-    copyFiles
-  ));
 
 
 function makeUnzipTask(from_spec, to_spec) {
@@ -345,16 +351,33 @@ function getCopyTasks() {
   return arr;
 }
 
+function watchSource(done) {
+  'use strict';
+  watch(paths.copy.input,    series(copyFiles   , reloadBrowser));
+  watch(paths.scripts.input, series(buildScripts, reloadBrowser));
+  watch(paths.styles.input,  series(buildStyles , reloadBrowser));
+  done();
+}
 
-exports.all       = all;
+
+exports.all = series(
+  cleanDist,
+  parallel(
+    lintScripts,
+    buildSVGs,
+    buildScripts,
+    buildStyles,
+    copyFiles
+  ));
+
 exports.cleanDist = cleanDist;
 exports.default   = defaultTask;
-exports.watch     = series(all, startServer, watchSource);
+exports.watch     = series(exports.all, startServer, watchSource);
 
 // fp - fetch packages for development to ./GENERATED
-exports.fp1_Clean   = cleanGenerated;
-exports.fp2_Unzip   = parallel.apply(null, getUnzipTasks());
-exports.fp3_Copy    = parallel.apply(null, getCopyTasks());
+exports.fp1_Clean = cleanGenerated;
+exports.fp2_Unzip = parallel.apply(null, getUnzipTasks());
+exports.fp3_Copy  = parallel.apply(null, getCopyTasks());
 exports.fp4_CleanUnzipped = cleanUnzipped;
 exports.fp99_All = series(
   exports.fp1_Clean,

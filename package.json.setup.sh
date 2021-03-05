@@ -42,6 +42,7 @@ if ((0)); then
 	yarn add --dev gulp-postcss
 	yarn add --dev gulp-rename
 	yarn add --dev gulp-sass
+	yarn add --dev gulp-sourcemaps
 	yarn add --dev gulp-svgmin
 	yarn add --dev gulp-terser
 	yarn add --dev jshint
