@@ -2,6 +2,7 @@ const fs = require('fs');
 const mkdirp = require('mkdirp');
 const path = require('path');
 const unzipper = require('unzipper');
+const browserSync = require('requireg')('browser-sync');
 
 // use 1 to activate task, use 0 to deactivate
 let settings = {
@@ -87,7 +88,6 @@ const sass    = require('gulp-sass');
 
 // other
 const svgmin      = require('gulp-svgmin');
-const browserSync = require('browser-sync');
 
 /*
  * Split the string at the first occurrence of sep, and return a 3-items array containing the part before the
@@ -346,15 +346,19 @@ function getCopyTasks() {
 }
 
 
-exports.all     = all;
-exports.cleanDist   = cleanDist;
-exports.default = defaultTask;
-exports.watch = series(all, startServer, watchSource);
+exports.all       = all;
+exports.cleanDist = cleanDist;
+exports.default   = defaultTask;
+exports.watch     = series(all, startServer, watchSource);
 
-// gp - get packages for development
-exports.gp_0_Refresh = series.apply(null, [cleanGenerated].concat(getUnzipTasks(), getCopyTasks()));
-exports.gp_1_Clean   = cleanGenerated;
-exports.gp_2_Unzip   = series.apply(null, getUnzipTasks());
-exports.gp_3_Copy    = series.apply(null, getCopyTasks());
-exports.gp_4_CleanUnzipped = cleanUnzipped;
+// fp - fetch packages for development to ./GENERATED
+exports.fp1_Clean   = cleanGenerated;
+exports.fp2_Unzip   = parallel.apply(null, getUnzipTasks());
+exports.fp3_Copy    = parallel.apply(null, getCopyTasks());
+exports.fp4_CleanUnzipped = cleanUnzipped;
+exports.fp99_All = series(
+  exports.fp1_Clean,
+  exports.fp2_Unzip,
+  exports.fp3_Copy
+);
 

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Steps - top down - to do when starting with a blank folder
+
 if ((0)); then
   # set up node, npm, npx
   nvm --version
@@ -15,6 +17,7 @@ if ((0)); then
   # global npm installs
   npm install -g yarn
   npm install -g gulp-cli
+  npm install -g browser-sync
 fi
 
 if ((0)); then
@@ -28,7 +31,6 @@ fi
 if ((0)); then
   # requirements for cferdinandi gulpfile
 	yarn add --dev autoprefixer
-	yarn add --dev browser-sync
 	yarn add --dev cssnano
 	yarn add --dev del
 	yarn add --dev gulp
@@ -45,25 +47,25 @@ if ((0)); then
 	yarn add --dev jshint
 	yarn add --dev jshint-stylish
 	yarn add --dev lazypipe
+	yarn add --dev requireg
   yarn add --dev node-sass
   yarn add --dev postcss
 fi
 
-if ((1)); then
+if ((0)); then
   # run som gulp tasks
 	yarn gulp
 	yarn gulp --tasks
 	yarn gulp --tasks-simple
 fi
 
-if ((1)); then
+if ((0)); then
   # more requirements for gulpfile.js
   yarn add --dev mkdirp
-  yarn add --dev rimraf
   yarn add --dev unzipper
 fi
 
-if ((1)); then
+if ((0)); then
   # some common packages as project requirements
   yarn add @fortawesome/fontawesome-free
   yarn add jquery
@@ -73,10 +75,8 @@ if ((1)); then
   yarn add smartmenus
 fi
 
-if ((1)); then
+if ((0)); then
   # fetch project packages from Yarn2
+  yarn gulp fp99_All
 	yarn gulp --tasks-simple
 fi
-
-
-
