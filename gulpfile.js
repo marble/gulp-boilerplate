@@ -1,4 +1,3 @@
-const path = require('path');
 
 // use 1 to activate task, use 0 to deactivate
 let settings = {
@@ -14,39 +13,41 @@ let settings = {
 };
 
 const paths = {
-  input: 'src/',
-  output: 'dist/',
-  output_generated: 'GENERATED/',
-  output_unzipped: 'GENERATED/UNZIPPED',
-  scripts: {
-    input: 'src/js/**/*.{js}',
+  src: 'src/',
+  dest: 'dist/',
+  dest_generated: 'GENERATED/',
+  dest_unzipped: 'GENERATED/UNZIPPED',
+  js: {
+    src: 'src/js/**/*.{js}',
     polyfills: '.polyfill.js',
-    output: 'dist/js/'
+    dest: 'dist/js/'
   },
-  styles: {
-    input: 'src/sass/**/*.{scss,sass}',
-    output: 'dist/css/'
+  css: {
+    src: 'src/sass/**/*.{scss,sass}',
+    dest: 'dist/css/'
   },
   svgs: {
-    input: 'src/svg/*.svg',
-    output: 'dist/svg/'
+    src: 'src/svg/*.svg',
+    dest: 'dist/svg/'
   },
   copy: {
-    input: 'src/copy/**/*',
-    output: 'dist/'
+    src: 'src/copy/**/*',
+    dest: 'dist/'
   },
   reload: './dist/',
-  npm_distributions: {
-    'bootstrap'                : path.normalize(path.join(require.resolve('bootstrap'       ), '../../../dist')),
-    'jquery'                   : path.normalize(path.join(require.resolve('jquery'          ), '../../dist')),
-    'smartmenus'               : path.normalize(path.join(require.resolve('smartmenus'      ), '..')),
-    'js-cookie'                : path.normalize(path.join(require.resolve('js-cookie'       ), '..')),
-    'responsive-tabs-js'       : path.normalize(path.join(require.resolve('responsive-tabs' ), '../../js')),
-    'slick-carousel'           : path.normalize(path.join(require.resolve('slick-carousel'  ), '../slick')),
-    'fontawesome-free'         : path.normalize(path.join(require.resolve('@fortawesome/fontawesome-free' ), '../..')),
-    'fontawesome-free-webfonts': path.normalize(path.join(require.resolve('@fortawesome/fontawesome-free' ), '../../webfonts')),
-  }
+  vendorFiles: [
+    // unique name              // npm package name              // relpath to folder
+    ['bootstrap'                , 'bootstrap'                    , '../../../dist' ],
+    ['fontawesome-free'         , '@fortawesome/fontawesome-free', '../..'         ],
+    ['fontawesome-free-webfonts', '@fortawesome/fontawesome-free', '../../webfonts'],
+    ['jquery'                   , 'jquery'                       , '../../dist'    ],
+    ['js-cookie'                , 'js-cookie'                    , '..'            ],
+    ['responsive-tabs-js'       , 'responsive-tabs'              , '../../js'      ],
+    ['slick-carousel'           , 'slick-carousel'               , '../slick'      ],
+    ['smartmenus'               , 'smartmenus'                   , '..'            ],
+  ]
 };
+
 
 // Template for file header banner
 let banner = {
@@ -82,14 +83,16 @@ const del         = require('del');
 const flatmap     = require('gulp-flatmap');
 const fs          = require('fs');
 const gulp        = require('gulp');
-const sourcemaps  = require('gulp-sourcemaps');
 const header      = require('gulp-header');
 const lazypipe    = require('lazypipe');
 const mkdirp      = require('mkdirp');
 const packagejson = require('./package.json');
+const path = require('path');
 const rename      = require('gulp-rename');
+const sourcemaps  = require('gulp-sourcemaps');
 const unzipper    = require('unzipper');
-const {src, dest, watch, series, parallel} = require('gulp');
+const { partition } = require('./gulp/util.js');
+const { src, dest, watch, series, parallel } = require('gulp');
 
 // scripts
 const concat      = require('gulp-concat');
@@ -107,20 +110,6 @@ const sass        = require('gulp-sass');
 // other
 const svgmin      = require('gulp-svgmin');
 
-/*
- * Split the string at the first occurrence of sep, and return a 3-items array containing the part before the
- * separator, the separator itself, and the part after the separator. If the separator is not found, return
- * a 3-item array containing the string itself, followed by two empty strings.
- */
-function partition(s, sep) {
-  'use strict';
-  let p = s.indexOf(sep);
-  if (p === -1) {
-    return [s, '', ''];
-  } else {
-    return [s.substr(0, p), sep, s.substr(p + sep.length)];
-  }
-}
 
 function defaultTask(done) {
   'use strict';
@@ -140,7 +129,7 @@ function cleanDist(done) {
   'use strict';
   if (settings.clean) {
     del.sync([
-      paths.output
+      paths.dest
     ]);
   }
   done();
@@ -150,7 +139,7 @@ function cleanGenerated(done) {
   'use strict';
   if (settings.cleanGenerated) {
     del.sync([
-      paths.output_generated
+      paths.dest_generated
     ]);
   }
   done();
@@ -160,7 +149,7 @@ function cleanUnzipped(done) {
   'use strict';
   if (settings.cleanUnzipped) {
     del.sync([
-      paths.output_unzipped
+      paths.dest_unzipped
     ]);
   }
   done();
@@ -169,22 +158,22 @@ function cleanUnzipped(done) {
 let jsTasks = lazypipe()
   .pipe(header, banner.main, {package: packagejson})
   .pipe(optimizejs)
-  .pipe(dest, paths.scripts.output)
+  .pipe(dest, paths.js.dest)
   .pipe(rename, {suffix: '.min'})
   .pipe(uglify)
   .pipe(optimizejs)
   .pipe(header, banner.main, {package: packagejson})
-  .pipe(dest, paths.scripts.output);
+  .pipe(dest, paths.js.dest);
 
 let jsTasksFull = lazypipe()
   .pipe(header, banner.main, {package: packagejson})
   .pipe(optimizejs)
-  .pipe(dest, paths.scripts.output)
+  .pipe(dest, paths.js.dest)
   .pipe(rename, {suffix: '.min'})
   .pipe(uglify)
   .pipe(optimizejs)
   .pipe(header, banner.main, {package: packagejson})
-  .pipe(dest, paths.scripts.output);
+  .pipe(dest, paths.js.dest);
 
 
 // lint, minify, concatenate
@@ -193,14 +182,14 @@ var buildScripts = function (done) {
   if (!settings.scripts) {
     return done();
   }
-  return src(paths.scripts.input)
+  return src(paths.js.src)
     .pipe(flatmap(function(stream, file) {
       if (file.isDirectory()) {
         let suffix = '';
         if (settings.polyfills) {
           suffix = '.polyfills';
           // Grab files that aren't polyfills, concatenate them, and process them
-          src([file.path + '/*.js', '!' + file.path + '/*' + paths.scripts.polyfills])
+          src([file.path + '/*.js', '!' + file.path + '/*' + paths.js.polyfills])
             .pipe(concat(file.relative + '.js'))
             .pipe(jsTasks());
         }
@@ -222,7 +211,7 @@ function lintScripts(done) {
   if (!settings.scripts) {
     return done();
   }
-  return src(paths.scripts.input)
+  return src(paths.js.src)
     .pipe(jshint())
     .pipe(jshint.reporter('jshint-stylish'));
 }
@@ -233,7 +222,7 @@ function buildStyles(done) {
   if (!settings.styles) {
     return done();
   }
-  return src(paths.styles.input)
+  return src(paths.css.src)
     .pipe(sourcemaps.init())
     .pipe(sass({
       outputStyle: 'expanded',
@@ -247,7 +236,7 @@ function buildStyles(done) {
       })
     ]))
     .pipe(header(banner.main, {package: packagejson}))
-    .pipe(dest(paths.styles.output))
+    .pipe(dest(paths.css.dest))
     .pipe(rename({suffix: '.min'}))
     .pipe(postcss([
       minify({
@@ -257,7 +246,7 @@ function buildStyles(done) {
       })
     ]))
     .pipe(sourcemaps.write('./'))
-    .pipe(dest(paths.styles.output));
+    .pipe(dest(paths.css.dest));
 
 }
 
@@ -267,9 +256,9 @@ function buildSVGs(done) {
   if (!settings.svgs) {
     return done();
   }
-  return src(paths.svgs.input)
+  return src(paths.svgs.src)
     .pipe(svgmin())
-    .pipe(dest(paths.svgs.output));
+    .pipe(dest(paths.svgs.dest));
 
 }
 
@@ -279,8 +268,8 @@ function copyFiles(done) {
   if (!settings.copy) {
     return done();
   }
-  return src(paths.copy.input)
-    .pipe(dest(paths.copy.output));
+  return src(paths.copy.src)
+    .pipe(dest(paths.copy.dest));
 }
 
 function startServer(done) {
@@ -320,15 +309,17 @@ function makeUnzipTask(from_spec, to_spec) {
 function getUnzipTasks() {
   'use strict';
   let arr = [];
-  mkdirp.sync(paths.output_unzipped);
-  for (let [k, v] of Object.entries(paths.npm_distributions)) {
+  mkdirp.sync(paths.dest_unzipped);
+  for (let [k, p, r] of paths.vendorFiles) {
+    let v = path.normalize(path.join(require.resolve(p), r));
     let parts = partition(v, '.zip');
     if (parts[1] === '.zip') {
-      arr.push(makeUnzipTask(parts[0] + parts[1], paths.output_unzipped));
+      arr.push(makeUnzipTask(parts[0] + parts[1], paths.dest_unzipped));
     }
   }
   return arr;
 }
+
 
 function makeCopyTask(from_spec, to_spec) {
   'use strict';
@@ -340,27 +331,28 @@ function makeCopyTask(from_spec, to_spec) {
 function getCopyTasks() {
   'use strict';
   let arr = [];
-  mkdirp.sync(paths.output_generated);
-  for (let [k, v] of Object.entries(paths.npm_distributions)) {
+  mkdirp.sync(paths.dest_generated);
+  for (let [k, p, r] of paths.vendorFiles) {
+    let v = path.normalize(path.join(require.resolve(p), r));
     let parts = partition(v, '.zip');
     if (parts[1] === '.zip') {
-      v = path.join(paths.output_unzipped, parts[2]);
+      v = path.join(paths.dest_unzipped, parts[2]);
     }
-    arr.push(makeCopyTask(path.join(v, '**'), path.join(paths.output_generated, k)));
+    arr.push(makeCopyTask(path.join(v, '**'), path.join(paths.dest_generated, k)));
   }
   return arr;
 }
 
 function watchSource(done) {
   'use strict';
-  watch(paths.copy.input,    series(copyFiles   , reloadBrowser));
-  watch(paths.scripts.input, series(buildScripts, reloadBrowser));
-  watch(paths.styles.input,  series(buildStyles , reloadBrowser));
+  watch(paths.copy.src, series(copyFiles   , reloadBrowser));
+  watch(paths.js.src  , series(buildScripts, reloadBrowser));
+  watch(paths.css.src , series(buildStyles , reloadBrowser));
   done();
 }
 
 
-exports.all = series(
+exports.makeDist = series(
   cleanDist,
   parallel(
     lintScripts,
@@ -372,7 +364,7 @@ exports.all = series(
 
 exports.cleanDist = cleanDist;
 exports.default   = defaultTask;
-exports.watch     = series(exports.all, startServer, watchSource);
+exports.watch     = series(exports.makeDist, startServer, watchSource);
 
 // fp - fetch packages for development to ./GENERATED
 exports.fp1_Clean = cleanGenerated;

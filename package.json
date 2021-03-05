@@ -49,6 +49,7 @@
     "bootstrap": "^4.6.0",
     "jquery": "^3.6.0",
     "js-cookie": "^2.2.1",
+    "popper": "^1.0.1",
     "requireg": "^0.2.2",
     "responsive-tabs": "^1.6.3",
     "slick-carousel": "^1.8.1",
