@@ -12,5 +12,24 @@ module.exports.partition = function (s, sep) {
   } else {
     return [s.substr(0, p), sep, s.substr(p + sep.length)];
   }
-}
+};
+
+module.exports.decodePackageJsonTask = function (done) {
+  'strict';
+  const p = '../package.json';
+  let packagejson = require(p);
+  for (let [k, v] of Object.entries(packagejson)) {
+    console.log(`# ${k}`);
+    if (['dependencies', 'devDependencies'].includes(k)) {
+      let devopt = '';
+      if (k === 'devDependencies') {
+        devopt = ' --dev';
+      }
+      for (let [kk, vv] of Object.entries(v)) {
+        console.log(`yarn add${devopt} ${kk}`);
+      }
+    }
+  }
+  done();
+};
 

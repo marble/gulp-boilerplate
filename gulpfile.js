@@ -1,22 +1,13 @@
 
-// use 1 to activate task, use 0 to deactivate
-let settings = {
-  clean         : 1,
-  cleanGenerated: 1,
-  cleanUnzipped : 1,
-  scripts       : 1,
-  polyfills     : 1,
-  styles        : 1,
-  svgs          : 1,
-  copy          : 1,
-  reload        : 1
-};
-
 const paths = {
   src: 'src/',
   dest: 'dist/',
-  dest_generated: 'GENERATED/',
-  dest_unzipped: 'GENERATED/UNZIPPED',
+  generated: {
+    dest: 'GENERATED/',
+    unzipped: {
+      dest: 'GENERATED/UNZIPPED'
+    }
+  },
   js: {
     src: 'src/js/**/*.{js}',
     polyfills: '.polyfill.js',
@@ -30,8 +21,8 @@ const paths = {
     src: 'src/svg/*.svg',
     dest: 'dist/svg/'
   },
-  copy: {
-    src: 'src/copy/**/*',
+  html: {
+    src: 'src/html/**/*',
     dest: 'dist/'
   },
   reload: './dist/',
@@ -87,10 +78,11 @@ const header      = require('gulp-header');
 const lazypipe    = require('lazypipe');
 const mkdirp      = require('mkdirp');
 const packagejson = require('./package.json');
-const path = require('path');
+const path        = require('path');
 const rename      = require('gulp-rename');
 const sourcemaps  = require('gulp-sourcemaps');
 const unzipper    = require('unzipper');
+const util        = require('./gulp/util.js');
 const { partition } = require('./gulp/util.js');
 const { src, dest, watch, series, parallel } = require('gulp');
 
@@ -127,31 +119,25 @@ function exitOnErrorCb(err) {
 
 function cleanDist(done) {
   'use strict';
-  if (settings.clean) {
-    del.sync([
-      paths.dest
-    ]);
-  }
+  del.sync([
+    paths.dest
+  ]);
   done();
 }
 
 function cleanGenerated(done) {
   'use strict';
-  if (settings.cleanGenerated) {
-    del.sync([
-      paths.dest_generated
-    ]);
-  }
+  del.sync([
+    paths.generated.dest
+  ]);
   done();
 }
 
 function cleanUnzipped(done) {
   'use strict';
-  if (settings.cleanUnzipped) {
-    del.sync([
-      paths.dest_unzipped
-    ]);
-  }
+  del.sync([
+    paths.generated.unzipped.dest
+  ]);
   done();
 }
 
@@ -179,9 +165,6 @@ let jsTasksFull = lazypipe()
 // lint, minify, concatenate
 var buildScripts = function (done) {
   'use strict';
-  if (!settings.scripts) {
-    return done();
-  }
   return src(paths.js.src)
     .pipe(flatmap(function(stream, file) {
       if (file.isDirectory()) {
@@ -206,22 +189,16 @@ var buildScripts = function (done) {
     }));
 };
 
-function lintScripts(done) {
+function lintScripts() {
   'use strict';
-  if (!settings.scripts) {
-    return done();
-  }
   return src(paths.js.src)
     .pipe(jshint())
     .pipe(jshint.reporter('jshint-stylish'));
 }
 
 // process, lint, and minify Sass files
-function buildStyles(done) {
+function buildStyles() {
   'use strict';
-  if (!settings.styles) {
-    return done();
-  }
   return src(paths.css.src)
     .pipe(sourcemaps.init())
     .pipe(sass({
@@ -253,30 +230,20 @@ function buildStyles(done) {
 // optimize SVG
 function buildSVGs(done) {
   'use strict';
-  if (!settings.svgs) {
-    return done();
-  }
   return src(paths.svgs.src)
     .pipe(svgmin())
     .pipe(dest(paths.svgs.dest));
-
 }
 
-// copy static files
-function copyFiles(done) {
+// copy html files
+function htmlFiles(done) {
   'use strict';
-  if (!settings.copy) {
-    return done();
-  }
-  return src(paths.copy.src)
-    .pipe(dest(paths.copy.dest));
+  return src(paths.html.src)
+    .pipe(dest(paths.html.dest));
 }
 
 function startServer(done) {
   'use strict';
-  if (!settings.reload) {
-    return done();
-  }
   // https://browsersync.io/docs/options
   browserSync.init({
     server: {
@@ -288,9 +255,7 @@ function startServer(done) {
 
 function reloadBrowser(done) {
   'use strict';
-  if (settings.reload) {
-    browserSync.reload();
-  }
+  browserSync.reload();
   done();
 }
 
@@ -309,12 +274,12 @@ function makeUnzipTask(from_spec, to_spec) {
 function getUnzipTasks() {
   'use strict';
   let arr = [];
-  mkdirp.sync(paths.dest_unzipped);
+  mkdirp.sync(paths.generated.unzipped.dest);
   for (let [k, p, r] of paths.vendorFiles) {
     let v = path.normalize(path.join(require.resolve(p), r));
     let parts = partition(v, '.zip');
     if (parts[1] === '.zip') {
-      arr.push(makeUnzipTask(parts[0] + parts[1], paths.dest_unzipped));
+      arr.push(makeUnzipTask(parts[0] + parts[1], paths.generated.unzipped.dest));
     }
   }
   return arr;
@@ -331,14 +296,14 @@ function makeCopyTask(from_spec, to_spec) {
 function getCopyTasks() {
   'use strict';
   let arr = [];
-  mkdirp.sync(paths.dest_generated);
+  mkdirp.sync(paths.generated.dest);
   for (let [k, p, r] of paths.vendorFiles) {
     let v = path.normalize(path.join(require.resolve(p), r));
     let parts = partition(v, '.zip');
     if (parts[1] === '.zip') {
-      v = path.join(paths.dest_unzipped, parts[2]);
+      v = path.join(paths.generated.unzipped.dest, parts[2]);
     }
-    arr.push(makeCopyTask(path.join(v, '**'), path.join(paths.dest_generated, k)));
+    arr.push(makeCopyTask(path.join(v, '**'), path.join(paths.generated.dest, k)));
   }
   return arr;
 }
@@ -359,7 +324,7 @@ exports.makeDist = series(
     buildSVGs,
     buildScripts,
     buildStyles,
-    copyFiles
+    htmlFiles
   ));
 
 exports.cleanDist = cleanDist;
@@ -377,3 +342,4 @@ exports.fp99_All = series(
   exports.fp3_Copy
 );
 
+exports.utilDecodePackageJson = util.decodePackageJsonTask;
