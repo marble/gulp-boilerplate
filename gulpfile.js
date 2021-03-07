@@ -1,3 +1,4 @@
+// gulpfile.js
 
 const paths = {
   src: 'src/',
@@ -9,7 +10,7 @@ const paths = {
     }
   },
   js: {
-    src: 'src/js/**/*.{js}',
+    src: 'src/js/**',
     polyfills: '.polyfill.js',
     dest: 'dist/js/'
   },
@@ -36,6 +37,7 @@ const paths = {
     ['responsive-tabs-js'       , 'responsive-tabs'              , '../../js'      ],
     ['slick-carousel'           , 'slick-carousel'               , '../slick'      ],
     ['smartmenus'               , 'smartmenus'                   , '..'            ],
+    ['gulp-optimize-js'         , 'gulp-optimize-js'             , '..'            ],
   ]
 };
 
@@ -74,6 +76,7 @@ const del         = require('del');
 const flatmap     = require('gulp-flatmap');
 const fs          = require('fs');
 const gulp        = require('gulp');
+const gutil       = require('gulp-util');
 const header      = require('gulp-header');
 const lazypipe    = require('lazypipe');
 const mkdirp      = require('mkdirp');
@@ -151,15 +154,33 @@ let jsTasks = lazypipe()
   .pipe(header, banner.main, {package: packagejson})
   .pipe(dest, paths.js.dest);
 
-let jsTasksFull = lazypipe()
-  .pipe(header, banner.main, {package: packagejson})
-  .pipe(optimizejs)
-  .pipe(dest, paths.js.dest)
-  .pipe(rename, {suffix: '.min'})
-  .pipe(uglify)
-  .pipe(optimizejs)
-  .pipe(header, banner.main, {package: packagejson})
-  .pipe(dest, paths.js.dest);
+// lint, minify, concatenate
+function buildJs() {
+  'use strict';
+  return src(paths.js.src)
+    .pipe(jsTasks())
+    // last .pipe() cannot be lazypipe
+    // https://stackoverflow.com/questions/40098156/what-about-this-combination-of-gulp-concat-and-lazypipe-is-causing-an-error-usin
+    .pipe(gutil.noop())
+    ;
+}
+
+// lint, minify, concatenate (without lazypipe)
+function buildJsThisWorksAsWell(done) {
+  'use strict';
+  return src(paths.js.src)
+    .pipe(header(banner.main, {package: packagejson}))
+    .pipe(optimizejs())
+    .pipe(dest(paths.js.dest))
+    .pipe(rename({suffix: '.min'}))
+    .pipe(uglify())
+    .pipe(optimizejs())
+    .pipe(header(banner.main, {package: packagejson}))
+    .pipe(dest(paths.js.dest))
+    ;
+}
+
+
 
 
 // lint, minify, concatenate
@@ -169,7 +190,7 @@ var buildScripts = function (done) {
     .pipe(flatmap(function(stream, file) {
       if (file.isDirectory()) {
         let suffix = '';
-        if (settings.polyfills) {
+        if (1) {
           suffix = '.polyfills';
           // Grab files that aren't polyfills, concatenate them, and process them
           src([file.path + '/*.js', '!' + file.path + '/*' + paths.js.polyfills])
@@ -187,7 +208,7 @@ var buildScripts = function (done) {
         return stream.pipe(jsTasks());
       }
     }));
-};
+}
 
 function lintScripts() {
   'use strict';
@@ -197,7 +218,7 @@ function lintScripts() {
 }
 
 // process, lint, and minify Sass files
-function buildStyles() {
+function buildCss() {
   'use strict';
   return src(paths.css.src)
     .pipe(sourcemaps.init())
@@ -259,8 +280,6 @@ function reloadBrowser(done) {
   done();
 }
 
-
-
 function makeUnzipTask(from_spec, to_spec) {
   'use strict';
   return function (done) {
@@ -269,7 +288,6 @@ function makeUnzipTask(from_spec, to_spec) {
       .on('close', done);
   };
 }
-
 
 function getUnzipTasks() {
   'use strict';
@@ -310,20 +328,20 @@ function getCopyTasks() {
 
 function watchSource(done) {
   'use strict';
-  watch(paths.copy.src, series(copyFiles   , reloadBrowser));
-  watch(paths.js.src  , series(buildScripts, reloadBrowser));
-  watch(paths.css.src , series(buildStyles , reloadBrowser));
+  watch(paths.html.src, series(htmlFiles, reloadBrowser));
+  watch(paths.js.src  , series(buildJs  , reloadBrowser));
+  watch(paths.css.src , series(buildCss , reloadBrowser));
   done();
 }
-
 
 exports.makeDist = series(
   cleanDist,
   parallel(
     lintScripts,
     buildSVGs,
+    //buildJs,
     buildScripts,
-    buildStyles,
+    buildCss,
     htmlFiles
   ));
 
@@ -331,15 +349,15 @@ exports.cleanDist = cleanDist;
 exports.default   = defaultTask;
 exports.watch     = series(exports.makeDist, startServer, watchSource);
 
-// fp - fetch packages for development to ./GENERATED
-exports.fp1_Clean = cleanGenerated;
-exports.fp2_Unzip = parallel.apply(null, getUnzipTasks());
-exports.fp3_Copy  = parallel.apply(null, getCopyTasks());
-exports.fp4_CleanUnzipped = cleanUnzipped;
-exports.fp99_All = series(
-  exports.fp1_Clean,
-  exports.fp2_Unzip,
-  exports.fp3_Copy
+// G like ./GENERATED: fetch packages for development to ./GENERATED
+exports.G1_Clean = cleanGenerated;
+exports.G2_Unzip = series(cleanUnzipped, parallel.apply(null, getUnzipTasks()));
+exports.G3_Copy  = parallel.apply(null, getCopyTasks());
+exports.G4_CleanUnzipped = cleanUnzipped;
+exports.G99_All = series(
+  exports.G1_Clean,
+  exports.G2_Unzip,
+  exports.G3_Copy
 );
 
 exports.utilDecodePackageJson = util.decodePackageJsonTask;

@@ -4019,13 +4019,16 @@ fsevents@~2.3.1:
     gulp-sourcemaps: ^3.0.0
     gulp-svgmin: ^3.0.0
     gulp-terser: ^2.0.1
+    gulp-util: ^3.0.8
     jquery: ^3.6.0
     js-cookie: ^2.2.1
     jshint: ^2.12.0
     jshint-stylish: ^2.2.1
     lazypipe: ^1.0.2
+    lodash: ^4.17.21
     mkdirp: ^1.0.4
     node-sass: ^5.0.0
+    optimize-js: ^1.0.3
     popper: ^1.0.1
     postcss: ^8.2.7
     requireg: ^0.2.2
@@ -4033,6 +4036,7 @@ fsevents@~2.3.1:
     rimraf: ^3.0.2
     slick-carousel: ^1.8.1
     smartmenus: ^1.1.1
+    through2: ^4.0.2
     unzipper: ^0.10.11
   languageName: unknown
   linkType: soft
@@ -4203,7 +4207,7 @@ fsevents@~2.3.1:
   languageName: node
   linkType: hard
 
-"gulp-util@npm:^3.0.7":
+"gulp-util@npm:^3.0.7, gulp-util@npm:^3.0.8":
   version: 3.0.8
   resolution: "gulp-util@npm:3.0.8"
   dependencies:
@@ -5855,7 +5859,7 @@ fsevents@~2.3.1:
   languageName: node
   linkType: hard
 
-"lodash@npm:^4.0.0, lodash@npm:^4.12.0, lodash@npm:^4.16.2, lodash@npm:^4.17.11, lodash@npm:^4.17.14, lodash@npm:^4.17.15, lodash@npm:^4.17.19, lodash@npm:~4.17.10, lodash@npm:~4.17.19":
+"lodash@npm:^4.0.0, lodash@npm:^4.12.0, lodash@npm:^4.16.2, lodash@npm:^4.17.11, lodash@npm:^4.17.14, lodash@npm:^4.17.15, lodash@npm:^4.17.19, lodash@npm:^4.17.21, lodash@npm:~4.17.10, lodash@npm:~4.17.19":
   version: 4.17.21
   resolution: "lodash@npm:4.17.21"
   checksum: 4983720b9abca930a4a46f18db163d7dad8dd00dbed6db0cc7b499b33b717cce69f80928b27bbb1ff2cbd3b19d251ee90669a8b5ea466072ca81c2ebe91e7468
@@ -6845,7 +6849,7 @@ fsevents@~2.3.1:
   languageName: node
   linkType: hard
 
-"optimize-js@npm:^1.0.0":
+"optimize-js@npm:^1.0.0, optimize-js@npm:^1.0.3":
   version: 1.0.3
   resolution: "optimize-js@npm:1.0.3"
   dependencies:

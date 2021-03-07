@@ -1,0 +1,7 @@
+
+echo '' >>.gitignore
+sed -z -i '/.yarn\//!s/$/.yarn\/\n/' .gitignore
+sed -z -i '/*GENERATED*/!s/$/*GENERATED*\n/' .gitignore
+sed -z -i '/.pnp.js/!s/$/.pnp.js\n/' .gitignore
+sed -z -i '/dist\//!s/$/dist\/\n/' .gitignore
+sed -z -i '/node-modules/!s/$/node-modules\n/' .gitignore
