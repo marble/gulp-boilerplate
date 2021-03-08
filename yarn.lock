@@ -4018,7 +4018,7 @@ fsevents@~2.3.1:
     gulp-sass: ^4.1.0
     gulp-sourcemaps: ^3.0.0
     gulp-svgmin: ^3.0.0
-    gulp-terser: ^2.0.1
+    gulp-uglify-es: ^2.0.0
     gulp-util: ^3.0.8
     jquery: ^3.6.0
     js-cookie: ^2.2.1
@@ -4033,7 +4033,6 @@ fsevents@~2.3.1:
     postcss: ^8.2.7
     requireg: ^0.2.2
     responsive-tabs: ^1.6.3
-    rimraf: ^3.0.2
     slick-carousel: ^1.8.1
     smartmenus: ^1.1.1
     through2: ^4.0.2
@@ -4195,15 +4194,16 @@ fsevents@~2.3.1:
   languageName: node
   linkType: hard
 
-"gulp-terser@npm:^2.0.1":
-  version: 2.0.1
-  resolution: "gulp-terser@npm:2.0.1"
+"gulp-uglify-es@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "gulp-uglify-es@npm:2.0.0"
   dependencies:
+    o-stream: ^0.2.2
     plugin-error: ^1.0.1
-    terser: 5.4.0
-    through2: ^4.0.2
+    terser: ^4.3.9
+    vinyl: ^2.2.0
     vinyl-sourcemaps-apply: ^0.2.1
-  checksum: 5ceed80163fe0721a5c7467e50ea071f77359d2ad6410ad8cebb30d5d19828725893b44c7f6d4ebcdecf8cb03956e1bd15efd982a7a8c8f1848e37e2e157c2df
+  checksum: d7b4956c49dd049db757f34d04a30428a695b7d29c29ffdfd5fa0c50da316cef7da52802274c15f72967252788378bead8c681353343516402ef32a08343fc31
   languageName: node
   linkType: hard
 
@@ -6683,6 +6683,13 @@ fsevents@~2.3.1:
   languageName: node
   linkType: hard
 
+"o-stream@npm:^0.2.2":
+  version: 0.2.2
+  resolution: "o-stream@npm:0.2.2"
+  checksum: ac5d932e75c0e04dfb34198e5059a472150d2081c0639f270901c15e5b5e5c06ac40549e774d6e40636a456711946dacf1a942a5179644ce7f45f8dd63b0fcf7
+  languageName: node
+  linkType: hard
+
 "oauth-sign@npm:~0.9.0":
   version: 0.9.0
   resolution: "oauth-sign@npm:0.9.0"
@@ -8937,7 +8944,7 @@ resolve@~1.7.1:
   languageName: node
   linkType: hard
 
-"source-map-support@npm:~0.5.19":
+"source-map-support@npm:~0.5.12":
   version: 0.5.19
   resolution: "source-map-support@npm:0.5.19"
   dependencies:
@@ -8970,17 +8977,10 @@ resolve@~1.7.1:
   languageName: node
   linkType: hard
 
-"source-map@npm:^0.6.0, source-map@npm:^0.6.1":
+"source-map@npm:^0.6.0, source-map@npm:^0.6.1, source-map@npm:~0.6.1":
   version: 0.6.1
   resolution: "source-map@npm:0.6.1"
   checksum: 8647829a0611724114022be455ca1c8a2c8ae61df81c5b3667d9b398207226a1e21174fb7bbf0b4dbeb27ac358222afb5a14f1c74a62a62b8883b012e5eb1270
-  languageName: node
-  linkType: hard
-
-"source-map@npm:~0.7.2":
-  version: 0.7.3
-  resolution: "source-map@npm:0.7.3"
-  checksum: 351ce26ffa1ebf203660c0d70d7566c81e65d2d994d1c2d94da140808e02da34961673ce12ecea9b40797b96fbeb8c70bf71a4ad9f779f1a4fdbba75530bb386
   languageName: node
   linkType: hard
 
@@ -9511,16 +9511,16 @@ resolve@~1.7.1:
   languageName: node
   linkType: hard
 
-"terser@npm:5.4.0":
-  version: 5.4.0
-  resolution: "terser@npm:5.4.0"
+"terser@npm:^4.3.9":
+  version: 4.8.0
+  resolution: "terser@npm:4.8.0"
   dependencies:
     commander: ^2.20.0
-    source-map: ~0.7.2
-    source-map-support: ~0.5.19
+    source-map: ~0.6.1
+    source-map-support: ~0.5.12
   bin:
     terser: bin/terser
-  checksum: 999f3392c65f43a66f7c411fb0b26f77b11d1569ec8898424eb0e216c93df3c342153721565eb5aabde81260012a10410124314881425dd660b60c817de6a50b
+  checksum: d7ab95898b40e2aa3513b02fc74f520f8e65072a19d7f687b8224af01512ad4d2227bc1375c22cd050f67eb1ca3e440b4f09652c5f48f13ed9ee81c0c26015a3
   languageName: node
   linkType: hard
 
@@ -10191,7 +10191,7 @@ resolve@~1.7.1:
   languageName: node
   linkType: hard
 
-"vinyl@npm:^2.0.0":
+"vinyl@npm:^2.0.0, vinyl@npm:^2.2.0":
   version: 2.2.1
   resolution: "vinyl@npm:2.2.1"
   dependencies:

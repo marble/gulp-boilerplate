@@ -94,7 +94,7 @@ const concat      = require('gulp-concat');
 const jshint      = require('gulp-jshint');
 const optimizejs  = require('gulp-optimize-js');
 const stylish     = require('jshint-stylish');
-const uglify      = require('gulp-terser');
+const ugliterse   = require('gulp-uglify-es').default;
 
 // css
 const minify      = require('cssnano');
@@ -149,9 +149,9 @@ let jsTasks = lazypipe()
   .pipe(optimizejs)
   .pipe(dest, paths.js.dest)
   .pipe(rename, {suffix: '.min'})
-  .pipe(uglify)
-  .pipe(optimizejs)
-  .pipe(header, banner.main, {package: packagejson})
+  .pipe(sourcemaps.init)
+  .pipe(ugliterse)
+  .pipe(sourcemaps.write, '../jsmaps')
   .pipe(dest, paths.js.dest);
 
 // lint, minify, concatenate
@@ -173,42 +173,36 @@ function buildJsThisWorksAsWell(done) {
     .pipe(optimizejs())
     .pipe(dest(paths.js.dest))
     .pipe(rename({suffix: '.min'}))
-    .pipe(uglify())
-    .pipe(optimizejs())
-    .pipe(header(banner.main, {package: packagejson}))
+    .pipe(sourcemaps.init())
+    .pipe(ugliterse())
+    .pipe(sourcemaps.write('../jsmaps'))
     .pipe(dest(paths.js.dest))
     ;
 }
 
-
-
-
-// lint, minify, concatenate
-var buildScripts = function (done) {
+const buildJsConcat = function (done) {
   'use strict';
   return src(paths.js.src)
     .pipe(flatmap(function(stream, file) {
+      let suffix = '';
       if (file.isDirectory()) {
-        let suffix = '';
-        if (1) {
-          suffix = '.polyfills';
-          // Grab files that aren't polyfills, concatenate them, and process them
-          src([file.path + '/*.js', '!' + file.path + '/*' + paths.js.polyfills])
-            .pipe(concat(file.relative + '.js'))
-            .pipe(jsTasks());
-        }
+        // process each directory
+        suffix = '.polyfills';
+        // grab files that aren't polyfills, concatenate them, and process them
+        src([file.path + '/*.js', '!' + file.path + '/*' + paths.js.polyfills])
+          .pipe(concat(file.relative + '.js'))
+          .pipe(jsTasks());
         // concatenate all
-        // If separate polyfills enabled, this will have .polyfills in the filename
         src(file.path + '/*.js')
           .pipe(concat(file.relative + suffix + '.js'))
           .pipe(jsTasks());
         return stream;
       } else {
-        // process file
+        // process each file
         return stream.pipe(jsTasks());
       }
     }));
-}
+};
 
 function lintScripts() {
   'use strict';
@@ -339,8 +333,11 @@ exports.makeDist = series(
   parallel(
     lintScripts,
     buildSVGs,
-    //buildJs,
-    buildScripts,
+
+    // buildJs,
+    buildJsConcat,
+    // buildJsThisWorksAsWell,
+
     buildCss,
     htmlFiles
   ));

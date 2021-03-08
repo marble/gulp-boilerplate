@@ -30,27 +30,34 @@ fi
 
 if ((0)); then
   # requirements for cferdinandi gulpfile
-	yarn add --dev autoprefixer
-	yarn add --dev cssnano
-	yarn add --dev del
-	yarn add --dev gulp
-	yarn add --dev gulp-concat
-	yarn add --dev gulp-flatmap
-	yarn add --dev gulp-header
-	yarn add --dev gulp-jshint
-	yarn add --dev gulp-optimize-js
-	yarn add --dev gulp-postcss
-	yarn add --dev gulp-rename
-	yarn add --dev gulp-sass
-	yarn add --dev gulp-sourcemaps
-	yarn add --dev gulp-svgmin
-	yarn add --dev gulp-terser
-	yarn add --dev jshint
-	yarn add --dev jshint-stylish
-	yarn add --dev lazypipe
-	yarn add --dev requireg
+  yarn add --dev autoprefixer
+  yarn add --dev cssnano
+  yarn add --dev del
+  yarn add --dev fs
+  yarn add --dev gulp
+  yarn add --dev gulp-concat
+  yarn add --dev gulp-flatmap
+  yarn add --dev gulp-header
+  yarn add --dev gulp-jshint
+  yarn add --dev gulp-optimize-js
+  yarn add --dev gulp-postcss
+  yarn add --dev gulp-rename
+  yarn add --dev gulp-sass
+  yarn add --dev gulp-sourcemaps
+  yarn add --dev gulp-svgmin
+  yarn add --dev gulp-uglify-es
+  yarn add --dev gulp-util
+  yarn add --dev jshint
+  yarn add --dev jshint-stylish
+  yarn add --dev lazypipe
+  yarn add --dev lodash
+  yarn add --dev mkdirp
   yarn add --dev node-sass
+  yarn add --dev optimize-js
   yarn add --dev postcss
+  yarn add --dev requireg
+  yarn add --dev through2
+  yarn add --dev unzipper
 fi
 
 if ((0)); then
@@ -69,8 +76,10 @@ fi
 if ((0)); then
   # some common packages as project requirements
   yarn add @fortawesome/fontawesome-free
+  yarn add bootstrap
   yarn add jquery
   yarn add js-cookie
+  yarn add popper
   yarn add responsive-tabs
   yarn add slick-carousel
   yarn add smartmenus
